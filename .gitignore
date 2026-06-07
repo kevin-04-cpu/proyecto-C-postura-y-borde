@@ -1,0 +1,11 @@
+# Ignorar la carpeta con los datos procesados locales
+dataset/
+
+# Ignorar los archivos de texto que genera el script para OpenMP
+dataset/processed/*.txt
+*.txt
+
+# Ignorar archivos temporales del sistema u otros entornos (opcional pero recomendado)
+__pycache__/
+.DS_Store
+Thumbs.db
