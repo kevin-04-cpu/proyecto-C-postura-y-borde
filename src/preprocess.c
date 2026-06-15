@@ -6,10 +6,10 @@
 
 // Definiciones para STB (Deben ir antes de incluir los headers, y SÓLO en un archivo .c)
 #define STB_IMAGE_IMPLEMENTATION
-#include "include/stb_image.h"
+#include "../include/stb_image.h"
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include "include/stb_image_resize2.h"
+#include "../include/stb_image_resize2.h"
 
 // Definiciones de la arquitectura del proyecto
 #define IMG_SIZE 64
@@ -114,9 +114,9 @@ int main(int argc, char* argv[]) {
     char out_bin_y[256];
 
     // Construir dinámicamente las rutas de entrada y salida
-    sprintf(txt_path, "dataset/processed/%s.txt", target);
-    sprintf(out_bin_X, "dataset/processed/X_%s.bin", target);
-    sprintf(out_bin_y, "dataset/processed/y_%s.bin", target);
+    sprintf(txt_path, "../dataset/processed/%s.txt", target);
+    sprintf(out_bin_X, "../dataset/processed/X_%s.bin", target);
+    sprintf(out_bin_y, "../dataset/processed/y_%s.bin", target);
 
     ImageRecord* dataset_list;
     int num_images;
@@ -145,8 +145,7 @@ int main(int argc, char* argv[]) {
         y_data[i] = dataset_list[i].label;
 
         char full_path[512];
-        sprintf(full_path, "dataset/processed/%s", dataset_list[i].path);
-
+        sprintf(full_path, "../dataset/processed/%s", dataset_list[i].path);
         float* mi_fila_matriz = &X_data[i * FLATTENED_SIZE];
 
         int width, height, channels;

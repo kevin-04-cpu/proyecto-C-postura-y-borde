@@ -5,7 +5,10 @@ images/
 # Ignorar los archivos de texto que genera el script para OpenMP
 dataset/processed/*.txt
 *.txt
-
+#Ignorar la carpeta con los algoritmos de prosesamiento de datos
+include/
+#Ignorar ejecutables
+*.exe
 # Ignorar archivos temporales del sistema u otros entornos (opcional pero recomendado)
 __pycache__/
 .DS_Store
