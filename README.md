@@ -101,12 +101,12 @@ Before setting up and executing this project, ensure your system meets the follo
 1. **Clone the Repository**
    ```bash
    git clone https://github.com/Daxdzzzy/proyecto-C-postura-y-borde
-   cd computer-vision-posture-detection
+   cd proyecto-C-postura-y-borde
    ```
 
 2. **Download the Dataset**
 Since the raw image files are excluded from this repository via `.gitignore` due to size and composition constraints, you must download the structured dataset manually.
-* Download the dataset from the following link: [DOWNLOAD_DATASET_PLACEHOLDER]
+* Download the dataset from the following link: [https://drive.google.com/drive/folders/1osc-LFSSpwpy6_MkisDl1tH1SWocND23?usp=drive_link]
 * Extract the contents into the root directory of the project. Ensure the folder structure matches:
 
     ```text
@@ -130,9 +130,59 @@ Configure the virtual environment and install the packages required for the Stag
 
 This project is executed in three sequential stages. You must follow this order to properly process the data, train the model, and run the interface.
 
-* **Stage 1: Preprocessing (OpenMP)** — Processes independent image files in a parallelized loop to convert inputs into grayscale, apply silhouette edge detection filters, resize structures to $64 \times 64$ pixels, and output a flattened matrix to disk.
+### *Stage 1: Preprocessing (OpenMP)*
+Processes independent image files in a parallelized loop to convert inputs into grayscale, apply silhouette edge detection filters, resize structures to $64 \times 64$ pixels, and output a flattened matrix to disk.
 
-* **Stage 2: Model Training (CUDA)** — Loads the flattened dataset to train a Multi-Layer Perceptron (MLP) using explicit GPU kernels for matrix multiplication, bias addition, activations (ReLU/Sigmoid), Binary Cross-Entropy loss computation, and backpropagation.
 
-* **Stage 3: Application (Streamlit)** — A lightweight deployment application that loads the raw binaries or NumPy weight matrices to run inference on new webcam captures.
+1. Compile the Preprocessing Script Compile the C source code using `gcc` with the OpenMP flag enabled
 
+   ```bash
+   gcc -fopenmp preprocessing.c -o preprocessing -lm
+
+    ```
+
+2. Run Execution BenchmarksTest the pipeline by changing the number of active threads to evaluate scalability and measure speedup against the baseline serial execution:
+
+    ```bash
+    # Run serial execution (1 thread)
+    OMP_NUM_THREADS=1 ./preprocessing
+
+    # Run parallel execution (e.g., 2, 4, 8 threads)
+    OMP_NUM_THREADS=4 ./preprocessing
+
+    ```
+    This will output the flattened image matrix (`dataset.bin` or `dataset.csv`) and labels directly to disk.
+
+### *Stage 2: Model Training (CUDA)*
+Loads the flattened dataset to train a Multi-Layer Perceptron (MLP) using explicit GPU kernels for matrix multiplication, bias addition, activations (ReLU/Sigmoid), Binary Cross-Entropy loss computation, and backpropagation.
+
+1. Compile the CUDA Training Application Compile the device kernels and host code using the NVIDIA CUDA Compiler (`nvcc`):
+
+
+    ```bash
+    nvcc train.cu -o train_mlp
+    ```
+
+2. Execute Model Training Run the training executable to execute the network forward pass, calculate Binary Cross-Entropy loss, compute backpropagation gradients, and optimize weights via SGD:
+
+    ```bash
+    ./train_mlp
+
+    ```
+
+   Upon completion, this process automatically exports the trained weight and bias matrices to an external file (e.g., `weights.bin`)
+
+### *Stage 3: Application (Streamlit)*
+A lightweight deployment application that loads the raw binaries to run inference on new webcam captures.
+
+1. Launch the Web Interface Ensure your Python virtual environment is active and launch the Streamlit server:
+
+```bash
+streamlit run app.py
+```
+
+2. Perform Inference Open the local URL provided by Streamlit in your browser (typically `http://localhost:8501`).
+* Upload an image or provide a static file to trigger the Python inference engine.
+
+
+* The backend applies the identical preprocessing transformations (grayscale, Sobel edge filters, and $64 \times 64$ resizing) before running the forward pass with your saved weights to output the final posture classification.
