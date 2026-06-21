@@ -126,9 +126,11 @@ Respuestas técnicas a las preguntas de reflexión de OpenMP (Limitaciones por L
 
 ## Stage 2 Performance: CUDA
 
-Tabla comparativa de tiempos de entrenamiento: CPU vs. GPU.
+### tiempos de entrenamiento CPU vs GPU
+![CPU vs GPU](../images_report/cpu_vs_gpu.png)
 
-Tabla de rendimiento según variaciones en el tamaño de bloque de hilos CUDA (16×16, 32×32).
+### tiempos de entrenamiento según variaciones en el tamaño de bloque de hilos CUDA (8x8, 16×16, 32×32).
+![Tiempo vs tamaño de bloque](../images_report/tiempo_vs_bloque.png)
 
 Capturas de pantalla adjuntas de la terminal ejecutando nvidia-smi durante el procesamiento intensivo.
 
