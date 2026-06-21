@@ -126,33 +126,29 @@ Respuestas técnicas a las preguntas de reflexión de OpenMP (Limitaciones por L
 
 ## Stage 2 Performance: CUDA
 
-### tiempos de entrenamiento CPU vs GPU
+### CPU vs GPU training times
 ![CPU vs GPU](../images_report/cpu_vs_gpu.png)
 
-### tiempos de entrenamiento según variaciones en el tamaño de bloque de hilos CUDA (8x8, 16×16, 32×32).
+### Block Size Impact Analysis
 ![Tiempo vs tamaño de bloque](../images_report/tiempo_vs_bloque.png)
 
-Capturas de pantalla adjuntas de la terminal ejecutando nvidia-smi durante el procesamiento intensivo.
+### GPU Monitoring
+![Monitoreo GPU](../images_report/nvidia_smi.png)
 
-Respuestas técnicas a las preguntas de reflexión de CUDA (Ventajas del Matmul paralelo, abstracción de PyTorch e impacto del tamaño de los datos en el Speedup).
 
-### CPU vs GPU Execution Times
-### Block Size Impact Analysis
+
 ### Stage 2 Reflection Questions
-
-
 
 ## Stage 3 Model Evaluation Metrics
 
-Gráficas de las curvas de entrenamiento: Pérdida (Loss) y Exactitud (Accuracy) decrecientes/crecientes por época.
-
-Matriz de Confusión final calculada estrictamente sobre el conjunto de prueba aislado.
-
-Cuadro comparativo de métricas finales: Precisión, Recall, F1-Score y Accuracy global.
-
 ### Training Loss and Accuracy Curves
+![Curva de loss y accuracy](../images_report/curva_perdida.png)
+![Curva de loss y accuracy](../images_report/curva_exactitud.png)
+
 ### Confusion Matrix
+![Matriz de confusión](../images_report/matriz_confusion.png)
 ### Precision, Recall, and F1-Score
+![precision,recall,f1](../images_report/metrica.png)
 
 ## Conclusions
 
