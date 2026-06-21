@@ -106,7 +106,7 @@ Before setting up and executing this project, ensure your system meets the follo
 
 2. **Download the Dataset**
 Since the raw image files are excluded from this repository via `.gitignore` due to size and composition constraints, you must download the structured dataset manually.
-* Download the dataset from the following link: [https://drive.google.com/drive/folders/1osc-LFSSpwpy6_MkisDl1tH1SWocND23?usp=drive_link]
+* Download the dataset from the following link: https://drive.google.com/drive/folders/1osc-LFSSpwpy6_MkisDl1tH1SWocND23?usp=drive_link
 * Extract the contents into the root directory of the project. Ensure the folder structure matches:
 
     ```text
@@ -145,10 +145,10 @@ Processes independent image files in a parallelized loop to convert inputs into 
 
     ```bash
     # Run serial execution (1 thread)
-    OMP_NUM_THREADS=1 ./preprocessing
+    OMP_NUM_THREADS=1 ./preprocess
 
     # Run parallel execution (e.g., 2, 4, 8 threads)
-    OMP_NUM_THREADS=4 ./preprocessing
+    OMP_NUM_THREADS=4 ./preprocess
 
     ```
     This will output the flattened image matrix (`dataset.bin` or `dataset.csv`) and labels directly to disk.
@@ -186,3 +186,7 @@ streamlit run app.py
 
 
 * The backend applies the identical preprocessing transformations (grayscale, Sobel edge filters, and $64 \times 64$ resizing) before running the forward pass with your saved weights to output the final posture classification.
+
+## Performance Report & Benchmarks
+
+For a detailed analysis of execution times, hardware specifications, speedup charts, and academic reflection questions, please refer to the [Performance Report & Benchmarks](./docs/BENCHMARK_REPORT.md).
