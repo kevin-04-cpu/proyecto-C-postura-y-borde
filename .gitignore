@@ -1,5 +1,7 @@
 # Ignorar la carpeta con los datos procesados locales
 dataset/
+# Ignorar la carpeta con las imagenes que tomamos para el dataset
+images/
 # Ignorar los archivos de texto que genera el script para OpenMP
 dataset/processed/*.txt
 *.txt
