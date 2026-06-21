@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="images/logo.png" alt="Logo" width="80" height="80">
+  <img src="images_report/logo.png" alt="Logo" width="80" height="80">
 
   <h3 align="center">Computer vision for posture detection</h3>
 
@@ -52,7 +52,7 @@ The optimization goal focuses on benchmarking parallel computing patterns, measu
 ### Pipeline Architecture
 The system is divided into three distinct execution phases:
 
-![Pipeline del proyecto](images/pipeline.png)
+![Pipeline del proyecto](images_report/pipeline.png)
 
 ### Built With
 
