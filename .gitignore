@@ -13,3 +13,11 @@ include/
 __pycache__/
 .DS_Store
 Thumbs.db
+
+#ignorar la carpeta de resultados
+resultados/
+
+#ignorar calculo de metricas
+*.ps1
+plot_metrics.py
+

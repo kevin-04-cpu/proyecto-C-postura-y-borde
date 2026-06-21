@@ -7,6 +7,7 @@
 #define INPUT_SIZE 4096
 #define HIDDEN_SIZE 128
 #define OUTPUT_SIZE 1
+#define BLOCK_SIZE 32
 
 #define CHECK_CUDA(call) { \
     cudaError_t err = call; \
@@ -69,14 +70,16 @@ __global__ void compute_dz1(float* dZ2, float* W2, float* A1, float* dZ1, int nu
     }
 }
 
-__global__ void update_layer2(float* dZ2, float* A1, float* W2, float* b2, float learning_rate, int num_images) {
+__global__ void update_layer2(float* dZ2, float* A1, float* W2, float* b2, float learning_rate, float l2_lambda, int num_images) {
     int col = blockIdx.x * blockDim.x + threadIdx.x; 
     if (col < HIDDEN_SIZE) {
         float dw = 0.0f;
         for (int i = 0; i < num_images; i++) {
             dw += dZ2[i] * A1[i * HIDDEN_SIZE + col];
         }
-        W2[col] -= learning_rate * (dw / num_images);
+        // Regularización L2 (weight decay): penaliza pesos grandes para reducir
+        // el sobreajuste. No se aplica al bias (práctica estándar).
+        W2[col] -= learning_rate * (dw / num_images + l2_lambda * W2[col]);
 
         // El hilo 0 se encarga del bias para evitar condiciones de carrera
         if (col == 0) {
@@ -87,7 +90,7 @@ __global__ void update_layer2(float* dZ2, float* A1, float* W2, float* b2, float
     }
 }
 
-__global__ void update_layer1(float* dZ1, float* X, float* W1, float* b1, float learning_rate, int num_images) {
+__global__ void update_layer1(float* dZ1, float* X, float* W1, float* b1, float learning_rate, float l2_lambda, int num_images) {
     int row = blockIdx.y * blockDim.y + threadIdx.y; // Neurona oculta (0 a 127)
     int col = blockIdx.x * blockDim.x + threadIdx.x; // Píxel de entrada (0 a 4095)
 
@@ -96,7 +99,8 @@ __global__ void update_layer1(float* dZ1, float* X, float* W1, float* b1, float 
         for (int i = 0; i < num_images; i++) {
             dw += dZ1[i * HIDDEN_SIZE + row] * X[i * INPUT_SIZE + col];
         }
-        W1[row * INPUT_SIZE + col] -= learning_rate * (dw / num_images);
+        int idx = row * INPUT_SIZE + col;
+        W1[idx] -= learning_rate * (dw / num_images + l2_lambda * W1[idx]);
 
         // La columna 0 de cada fila (neurona) actualiza su respectivo bias
         if (col == 0) {
@@ -119,6 +123,41 @@ float calculate_bce_loss(float* h_A2, int* h_y, int num_images) {
         loss += - (h_y[i] * logf(a) + (1 - h_y[i]) * logf(1 - a));
     }
     return loss / num_images;
+}
+
+// Exactitud (accuracy) a partir de las predicciones (umbral 0.5)
+float calculate_accuracy(float* h_A2, int* h_y, int num_images) {
+    int correct = 0;
+    for (int i = 0; i < num_images; i++) {
+        int pred = (h_A2[i] >= 0.5f) ? 1 : 0;
+        if (pred == h_y[i]) correct++;
+    }
+    return (float)correct / num_images;
+}
+
+// Calcula TP/TN/FP/FN, y a partir de ellos precisión, recall y F1
+typedef struct {
+    int tp, tn, fp, fn;
+    float accuracy, precision, recall, f1;
+} ConfusionMetrics;
+
+ConfusionMetrics calculate_confusion_metrics(float* h_A2, int* h_y, int num_images) {
+    ConfusionMetrics m = {0, 0, 0, 0, 0.0f, 0.0f, 0.0f, 0.0f};
+    for (int i = 0; i < num_images; i++) {
+        int pred = (h_A2[i] >= 0.5f) ? 1 : 0;
+        int real = h_y[i];
+        if (real == 1 && pred == 1) m.tp++;
+        else if (real == 0 && pred == 0) m.tn++;
+        else if (real == 0 && pred == 1) m.fp++;
+        else if (real == 1 && pred == 0) m.fn++;
+    }
+    m.accuracy = (float)(m.tp + m.tn) / num_images;
+    m.precision = (m.tp + m.fp > 0) ? (float)m.tp / (m.tp + m.fp) : 0.0f;
+    m.recall    = (m.tp + m.fn > 0) ? (float)m.tp / (m.tp + m.fn) : 0.0f;
+    m.f1 = (m.precision + m.recall > 0.0f)
+               ? 2.0f * (m.precision * m.recall) / (m.precision + m.recall)
+               : 0.0f;
+    return m;
 }
 
 int load_bin_float(const char* filepath, float** data) {
@@ -154,9 +193,11 @@ void init_weights(float* array, int size, int input_connections) {
 // -------------------------------------------------------------------------
 
 int main() {
+    // Pesos iniciados aleatoriamente en cada corrida (producción).
+    // Si necesitas reproducibilidad para depurar, cambia esto por srand(42).
     srand(time(NULL));
 
-    printf("=== INICIANDO MOTOR DE ENTRENAMIENTO CUDA ===\n");
+    printf("=== INICIANDO MOTOR DE ENTRENAMIENTO CUDA (block=%dx%d) ===\n", BLOCK_SIZE, BLOCK_SIZE);
 
     // =========================================================================
     // 1. CARGA DE TODOS LOS DATASETS EN EL HOST (CPU)
@@ -249,21 +290,21 @@ int main() {
     // =========================================================================
     // 5. CONFIGURACIÓN DE GRIDS DINÁMICAS
     // =========================================================================
-    dim3 threadsPerBlock(32, 32);
+    dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE);
     
     // Grids para Train
-    dim3 grid_FW1_train((HIDDEN_SIZE + 31) / 32, (num_images_train + 31) / 32);
-    dim3 grid_FW2_train((OUTPUT_SIZE + 31) / 32, (num_images_train + 31) / 32);
+    dim3 grid_FW1_train((HIDDEN_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE, (num_images_train + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    dim3 grid_FW2_train((OUTPUT_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE, (num_images_train + BLOCK_SIZE - 1) / BLOCK_SIZE);
     
     // Grids para Validación
-    dim3 grid_FW1_val((HIDDEN_SIZE + 31) / 32, (num_images_val + 31) / 32);
-    dim3 grid_FW2_val((OUTPUT_SIZE + 31) / 32, (num_images_val + 31) / 32);
+    dim3 grid_FW1_val((HIDDEN_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE, (num_images_val + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    dim3 grid_FW2_val((OUTPUT_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE, (num_images_val + BLOCK_SIZE - 1) / BLOCK_SIZE);
 
     int threads1D = 256;
     int blocks1D_train = (num_images_train + threads1D - 1) / threads1D;
     
-    dim3 grid_BW2((HIDDEN_SIZE + 31) / 32, 1);
-    dim3 grid_BW1((INPUT_SIZE + 31) / 32, (HIDDEN_SIZE + 31) / 32);
+    dim3 grid_BW2((HIDDEN_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE, 1);
+    dim3 grid_BW1((INPUT_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE, (HIDDEN_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE);
 
     // =========================================================================
     // 6. BUCLE DE ENTRENAMIENTO CON MONITOREO DE VALIDACIÓN
@@ -271,12 +312,33 @@ int main() {
     int epochs = 1000;
     float learning_rate = 0.05f;
 
-    printf("\n-> Hiperparámetros: Épocas = %d | LR = %.3f\n", epochs, learning_rate);
+    // Regularización L2 (weight decay): reduce el sobreajuste penalizando
+    // pesos grandes. Early stopping: si la pérdida de validación no mejora
+    // durante `patience` evaluaciones, se detiene y se usan los pesos de la
+    // mejor época (no los de la última, que suelen estar sobreajustados).
+    float l2_lambda = 0.0005f;
+    int patience = 4;
+
+    printf("\n-> Hiperparámetros: Épocas = %d | LR = %.3f | L2 = %.5f | Paciencia = %d\n",
+           epochs, learning_rate, l2_lambda, patience);
     printf("==================================================\n");
 
     cudaEvent_t start, stop;
     CHECK_CUDA(cudaEventCreate(&start)); CHECK_CUDA(cudaEventCreate(&stop));
     CHECK_CUDA(cudaEventRecord(start, 0));
+
+    int log_every = 100; // imprime progreso cada 100 épocas
+
+    // --- Buffers para guardar el MEJOR modelo visto durante el entrenamiento
+    // (el de menor val_loss), en vez de quedarnos solo con los pesos de la
+    // última época, que suelen estar sobreajustados. ---
+    float* best_W1 = (float*)malloc(HIDDEN_SIZE * INPUT_SIZE * sizeof(float));
+    float* best_b1 = (float*)malloc(HIDDEN_SIZE * sizeof(float));
+    float* best_W2 = (float*)malloc(OUTPUT_SIZE * HIDDEN_SIZE * sizeof(float));
+    float* best_b2 = (float*)malloc(OUTPUT_SIZE * sizeof(float));
+    float best_val_loss = 1e30f;
+    int best_epoch = 0;
+    int evals_without_improvement = 0;
 
     for (int epoch = 1; epoch <= epochs; epoch++) {
         // --- 6.1 FORWARD & BACKWARD (TRAIN DATA) ---
@@ -286,11 +348,11 @@ int main() {
         compute_dz2<<<blocks1D_train, threads1D>>>(d_A2_train, d_y_train, d_Z2, num_images_train);
         compute_dz1<<<grid_FW1_train, threadsPerBlock>>>(d_Z2, d_W2, d_A1_train, d_Z1, num_images_train);
 
-        update_layer2<<<grid_BW2, threadsPerBlock>>>(d_Z2, d_A1_train, d_W2, d_b2, learning_rate, num_images_train);
-        update_layer1<<<grid_BW1, threadsPerBlock>>>(d_Z1, d_X_train, d_W1, d_b1, learning_rate, num_images_train);
+        update_layer2<<<grid_BW2, threadsPerBlock>>>(d_Z2, d_A1_train, d_W2, d_b2, learning_rate, l2_lambda, num_images_train);
+        update_layer1<<<grid_BW1, threadsPerBlock>>>(d_Z1, d_X_train, d_W1, d_b1, learning_rate, l2_lambda, num_images_train);
         
         // --- 6.2 EVALUAR VALIDACIÓN (SOLO FORWARD, NO ACTUALIZA PESOS) ---
-        if (epoch % 100 == 0 || epoch == 1) {
+        if (epoch % log_every == 0 || epoch == 1 || epoch == epochs) {
             forward_layer1<<<grid_FW1_val, threadsPerBlock>>>(d_X_val, d_W1, d_b1, d_A1_val, num_images_val);
             forward_layer2<<<grid_FW2_val, threadsPerBlock>>>(d_A1_val, d_W2, d_b2, d_A2_val, num_images_val);
             
@@ -302,10 +364,47 @@ int main() {
 
             float train_loss = calculate_bce_loss(h_A2_train, h_y_train, num_images_train);
             float val_loss = calculate_bce_loss(h_A2_val, h_y_val, num_images_val);
+            float train_acc = calculate_accuracy(h_A2_train, h_y_train, num_images_train);
+            float val_acc = calculate_accuracy(h_A2_val, h_y_val, num_images_val);
 
-            printf("Época %4d/%d -> Train Loss: %f | Val Loss: %f\n", epoch, epochs, train_loss, val_loss);
+            printf("Época %4d/%d -> Train Loss: %f | Val Loss: %f | Train Acc: %.2f%% | Val Acc: %.2f%%\n",
+                   epoch, epochs, train_loss, val_loss, train_acc * 100.0f, val_acc * 100.0f);
+
+            // --- Guardar el mejor modelo visto hasta ahora (menor val_loss) ---
+            if (val_loss < best_val_loss) {
+                best_val_loss = val_loss;
+                best_epoch = epoch;
+                evals_without_improvement = 0;
+                CHECK_CUDA(cudaMemcpy(best_W1, d_W1, HIDDEN_SIZE * INPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost));
+                CHECK_CUDA(cudaMemcpy(best_b1, d_b1, HIDDEN_SIZE * sizeof(float), cudaMemcpyDeviceToHost));
+                CHECK_CUDA(cudaMemcpy(best_W2, d_W2, OUTPUT_SIZE * HIDDEN_SIZE * sizeof(float), cudaMemcpyDeviceToHost));
+                CHECK_CUDA(cudaMemcpy(best_b2, d_b2, OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost));
+            } else {
+                evals_without_improvement++;
+            }
+
+            // --- Early stopping: si val_loss no mejora en `patience` evaluaciones
+            // seguidas, detenemos el entrenamiento para no seguir sobreajustando ---
+            if (evals_without_improvement >= patience) {
+                printf("-> [EARLY STOPPING] Sin mejora en val_loss durante %d evaluaciones. "
+                       "Mejor época: %d (val_loss=%f). Deteniendo entrenamiento.\n",
+                       patience, best_epoch, best_val_loss);
+                break;
+            }
         }
     }
+
+    // --- Restaurar en la GPU los pesos del MEJOR modelo (menor val_loss),
+    // no los de la última época, antes de evaluar en test y exportar. ---
+    if (best_epoch > 0) {
+        printf("-> Restaurando pesos de la mejor época (%d, val_loss=%f) para la evaluación final.\n",
+               best_epoch, best_val_loss);
+        CHECK_CUDA(cudaMemcpy(d_W1, best_W1, HIDDEN_SIZE * INPUT_SIZE * sizeof(float), cudaMemcpyHostToDevice));
+        CHECK_CUDA(cudaMemcpy(d_b1, best_b1, HIDDEN_SIZE * sizeof(float), cudaMemcpyHostToDevice));
+        CHECK_CUDA(cudaMemcpy(d_W2, best_W2, OUTPUT_SIZE * HIDDEN_SIZE * sizeof(float), cudaMemcpyHostToDevice));
+        CHECK_CUDA(cudaMemcpy(d_b2, best_b2, OUTPUT_SIZE * sizeof(float), cudaMemcpyHostToDevice));
+    }
+    free(best_W1); free(best_b1); free(best_W2); free(best_b2);
 
     CHECK_CUDA(cudaEventRecord(stop, 0));
     CHECK_CUDA(cudaEventSynchronize(stop));
@@ -322,8 +421,8 @@ int main() {
     // =========================================================================
     printf("7. Iniciando Inferencia sobre el Dataset de Prueba (Caja Negra)...\n");
     
-    dim3 grid_test1((HIDDEN_SIZE + 31) / 32, (num_images_test + 31) / 32);
-    dim3 grid_test2((OUTPUT_SIZE + 31) / 32, (num_images_test + 31) / 32);
+    dim3 grid_test1((HIDDEN_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE, (num_images_test + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    dim3 grid_test2((OUTPUT_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE, (num_images_test + BLOCK_SIZE - 1) / BLOCK_SIZE);
 
     forward_layer1<<<grid_test1, threadsPerBlock>>>(d_X_test, d_W1, d_b1, d_A1_test, num_images_test);
     forward_layer2<<<grid_test2, threadsPerBlock>>>(d_A1_test, d_W2, d_b2, d_A2_test, num_images_test);
@@ -332,24 +431,18 @@ int main() {
     float* h_A2_test = (float*)malloc(num_images_test * sizeof(float));
     CHECK_CUDA(cudaMemcpy(h_A2_test, d_A2_test, num_images_test * sizeof(float), cudaMemcpyDeviceToHost));
 
-    int tp = 0, tn = 0, fp = 0, fn = 0;
-    for (int i = 0; i < num_images_test; i++) {
-        int pred = (h_A2_test[i] >= 0.5f) ? 1 : 0;
-        int real = h_X_test[i]; // Nota: la carga lee etiquetas y características en orden
-        
-        if (h_y_test[i] == 1 && pred == 1) tp++;
-        else if (h_y_test[i] == 0 && pred == 0) tn++;
-        else if (h_y_test[i] == 0 && pred == 1) fp++;
-        else if (h_y_test[i] == 1 && pred == 0) fn++;
-    }
+    ConfusionMetrics m = calculate_confusion_metrics(h_A2_test, h_y_test, num_images_test);
 
     printf("\n=== METRICAS DE EVALUACION FINAL (TEST DATA) ===\n");
-    printf("Exactitud (Accuracy) Final: %.2f%%\n", ((float)(tp + tn) / num_images_test) * 100.0f);
+    printf("Exactitud (Accuracy):  %.2f%%\n", m.accuracy * 100.0f);
+    printf("Precision:             %.4f\n", m.precision);
+    printf("Recall:                %.4f\n", m.recall);
+    printf("F1-Score:              %.4f\n", m.f1);
     printf("--------------------------------------------------\n");
     printf("Matriz de Confusión:\n");
-    printf("               Pred. Recta (0)   Pred. Encorvada (1)\n");
-    printf("Real Recta (0):      %d                %d\n", tn, fp);
-    printf("Real Encorv. (1):    %d                %d\n", fn, tp);
+    printf("                 Pred. 0          Pred. 1\n");
+    printf("Real 0:          %4d             %4d\n", m.tn, m.fp);
+    printf("Real 1:          %4d             %4d\n", m.fn, m.tp);
     printf("==================================================\n");
 
     // =========================================================================
