@@ -366,8 +366,8 @@ int main() {
     CHECK_CUDA(cudaMemcpy(final_W2, d_W2, OUTPUT_SIZE * HIDDEN_SIZE * sizeof(float), cudaMemcpyDeviceToHost));
     CHECK_CUDA(cudaMemcpy(final_b2, d_b2, OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost));
 
-    FILE* fw1 = fopen("../dataset/processed/W1.bin", "wb"); FILE* fb1 = fopen("../dataset/processed/b1.bin", "wb");
-    FILE* fw2 = fopen("../dataset/processed/W2.bin", "wb"); FILE* fb2 = fopen("../dataset/processed/b2.bin", "wb");
+        FILE* fw1 = fopen("../weights/W1.bin", "wb"); FILE* fb1 = fopen("../weights/b1.bin", "wb");
+    FILE* fw2 = fopen("../weights/W2.bin", "wb"); FILE* fb2 = fopen("../weights/b2.bin", "wb");
 
     if (fw1 && fb1 && fw2 && fb2) {
         fwrite(final_W1, sizeof(float), HIDDEN_SIZE * INPUT_SIZE, fw1);
