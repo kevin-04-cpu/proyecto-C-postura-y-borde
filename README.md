@@ -137,7 +137,7 @@ Processes independent image files in a parallelized loop to convert inputs into 
 1. Compile the Preprocessing Script Compile the C source code using `gcc` with the OpenMP flag enabled
 
    ```bash
-   gcc -fopenmp preprocessing.c -o preprocessing -lm
+   gcc -fopenmp preprocess.c -o preprocess -lm
 
     ```
 
