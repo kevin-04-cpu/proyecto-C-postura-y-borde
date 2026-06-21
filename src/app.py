@@ -58,7 +58,7 @@ def preprocess_image(image_bytes):
 @st.cache_resource
 def load_trained_weights():
     """Carga los archivos binarios exportados por el programa de CUDA."""
-    path = "../dataset/processed/"
+    path = "../weights/"
     try:
         w1 = np.fromfile(os.path.join(path, "W1.bin"), dtype=np.float32).reshape(HIDDEN_SIZE, INPUT_SIZE)
         b1 = np.fromfile(os.path.join(path, "b1.bin"), dtype=np.float32).reshape(HIDDEN_SIZE)
