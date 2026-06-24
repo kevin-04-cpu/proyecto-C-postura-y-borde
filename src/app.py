@@ -35,6 +35,35 @@ def apply_sobel_python(img_gray):
     magnitude = np.clip(magnitude, 0, 255).astype(np.uint8)
     return magnitude
 
+def hay_persona(img_color):
+    """Detecta si hay una persona en la imagen, de frente o de perfil.
+    Devuelve True si encuentra al menos un rostro, False si no."""
+    # Cargar los clasificadores incluidos en OpenCV
+    frontal_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    profile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml")
+
+    # Escala de grises + ecualización de histograma (mejora el contraste para detectar)
+    gray = cv2.cvtColor(img_color, cv2.COLOR_BGR2GRAY)
+    gray = cv2.equalizeHist(gray)
+
+    # Parámetros más sensibles para reconocer caras inclinadas o parcialmente tapadas
+    sf, mn, ms = 1.05, 2, (30, 30)
+
+    # 1. Rostros de frente
+    if len(frontal_cascade.detectMultiScale(gray, scaleFactor=sf, minNeighbors=mn, minSize=ms)) > 0:
+        return True
+
+    # 2. Rostros de perfil (un lado)
+    if len(profile_cascade.detectMultiScale(gray, scaleFactor=sf, minNeighbors=mn, minSize=ms)) > 0:
+        return True
+
+    # 3. Perfil del otro lado (imagen volteada)
+    gray_volteado = cv2.flip(gray, 1)
+    if len(profile_cascade.detectMultiScale(gray_volteado, scaleFactor=sf, minNeighbors=mn, minSize=ms)) > 0:
+        return True
+
+    return False
+
 def preprocess_image(image_bytes):
     """Transforma la imagen capturada al formato del vector de entrada de 4096."""
     # Convertir bytes a arreglo OpenCV
@@ -92,6 +121,11 @@ if success:
         
         # Ejecutar preprocesamiento idéntico al de C
         img_original, img_sobel, x_vector = preprocess_image(bytes_data)
+        
+        # Verificar que haya una persona antes de predecir la postura
+        if not hay_persona(img_original):
+            st.warning("⚠️ No se detecta ninguna persona en la imagen. Por favor, asegúrate de estar visible frente a la cámara e inténtalo de nuevo.")
+            st.stop()
         
         # Mostrar imágenes de diagnóstico en la App
         col1, col2 = st.columns(2)
