@@ -1,156 +1,184 @@
-[← Back to Main README](../README.md) 
+[← Volver al README Principal](../README.md)
 
-# Performance Report and Benchmarks 
+# Informe de Rendimiento y Benchmarks
 
 <div align="center">
   <img src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExcnc1MDhrNW00ZTh3M2V0Y3FlYnhtcW13N2lkc2tnc2I0aW5pYzhteiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0HlJIp1dIZzimEBq/giphy.gif" alt="Benchmarks" />
 </div>
 
-<!-- TABLE OF CONTENTS -->
+<!-- TABLA DE CONTENIDO -->
+
 <details>
-  <summary>Table of Contents</summary>
+  <summary>Tabla de Contenido</summary>
   <ol>
     <li>
-      <a href="#environment-specifications">Environment Specifications</a>
+      <a href="#análisis-del-conjunto-de-datos">Análisis del Conjunto de Datos</a>
       <ul>
-        <li><a href="#cpu-hardware">CPU Hardware</a></li>
-        <li><a href="#gpu-hardware">GPU Hardware</a></li>
+        <li><a href="#recolección-y-variedad-de-datos">Recolección y Variedad de Datos</a></li>
+        <li><a href="#división-de-los-datos">División de los Datos</a></li>
       </ul>
     </li>
     <li>
-      <a href="#dataset-analytics">Dataset Analytics</a>
+      <a href="#arquitectura-de-la-red-neuronal">Arquitectura de la Red Neuronal</a>
       <ul>
-        <li><a href="#data-collection-and-variety">Data Collection and Variety</a></li>
-        <li><a href="#data-splitting">Data Splitting</a></li>
+        <li><a href="#capas-y-parámetros-del-mlp">Capas y Parámetros del MLP</a></li>
       </ul>
     </li>
     <li>
-      <a href="#neural-network-architecture">Neural Network Architecture</a>
+      <a href="#rendimiento-etapa-1-openmp">Rendimiento Etapa 1: OpenMP</a>
       <ul>
-        <li><a href="#mlp-layers-and-parameters">MLP Layers and Parameters</a></li>
+        <li><a href="#tabla-de-tiempos-de-ejecución">Tabla de Tiempos de Ejecución</a></li>
+        <li><a href="#gráfica-y-análisis-de-speedup">Gráfica y Análisis de Speedup</a></li>
+        <li><a href="#preguntas-de-reflexión-de-openmp">Preguntas de Reflexión de OpenMP</a></li>
       </ul>
     </li>
     <li>
-      <a href="#stage-1-performance-openmp">Stage 1 Performance: OpenMP</a>
+      <a href="#rendimiento-etapa-2-cuda">Rendimiento Etapa 2: CUDA</a>
       <ul>
-        <li><a href="#openmp-execution-times">Execution Times Table</a></li>
-        <li><a href="#openmp-speedup-analysis">Speedup Chart & Analysis</a></li>
-        <li><a href="#openmp-reflection-questions">Stage 1 Reflection Questions</a></li>
+        <li><a href="#tiempos-de-entrenamiento-cpu-vs-gpu">Tiempos de Entrenamiento CPU vs GPU</a></li>
+        <li><a href="#análisis-del-impacto-del-tamaño-de-bloque">Análisis del Impacto del Tamaño de Bloque</a></li>
+        <li><a href="#monitoreo-de-gpu">Monitoreo de GPU</a></li>
+        <li><a href="#preguntas-de-reflexión-de-cuda">Preguntas de Reflexión de CUDA</a></li>
       </ul>
     </li>
     <li>
-      <a href="#stage-2-performance-cuda">Stage 2 Performance: CUDA</a>
+      <a href="#métricas-de-evaluación-del-modelo---etapa-3">Métricas de Evaluación del Modelo - Etapa 3</a>
       <ul>
-        <li><a href="#cpu-vs-gpu-execution-times">CPU vs GPU Execution Times</a></li>
-        <li><a href="#block-size-impact-analysis">Block Size Impact Analysis</a></li>
-        <li><a href="#cuda-reflection-questions">Stage 2 Reflection Questions</a></li>
+        <li><a href="#curvas-de-pérdida-y-exactitud-del-entrenamiento">Curvas de Pérdida y Exactitud del Entrenamiento</a></li>
+        <li><a href="#matriz-de-confusión">Matriz de Confusión</a></li>
+        <li><a href="#precisión-recall-y-puntaje-f1">Precisión, Recall y Puntaje F1</a></li>
       </ul>
     </li>
-    <li>
-      <a href="#stage-3-model-evaluation-metrics">Stage 3 Model Evaluation Metrics</a>
-      <ul>
-        <li><a href="#training-loss-and-accuracy-curves">Training Loss and Accuracy Curves</a></li>
-        <li><a href="#confusion-matrix">Confusion Matrix</a></li>
-        <li><a href="#final-classification-metrics">Precision, Recall, and F1-Score</a></li>
-      </ul>
-    </li>
-    <li><a href="#conclusions">Conclusions</a></li>
-    <li><a href="#acknowledgments-and-references">Acknowledgments and References</a></li>
+    <li><a href="#conclusiones">Conclusiones</a></li>
+    <li><a href="#referencias">Referencias</a></li>
   </ol>
 </details>
 
-## Environment Specifications
+## Análisis del Conjunto de Datos
 
-Detalle del Procesador (CPU) utilizado para OpenMP (Modelo, número de núcleos físicos e hilos lógicos).
-Detalle de la Tarjeta Gráfica (GPU) utilizada para CUDA (Modelo, núcleos CUDA y memoria VRAM disponible).
+El conjunto de datos del proyecto está diseñado para la detección binaria de postura sentada (`postura_recta` vs. `postura_encorvada`). Está balanceado adecuadamente y se divide en conjuntos de Entrenamiento, Validación y Prueba.
 
-### CPU Hardware
-### GPU Hardware
+### Recolección y Variedad de Datos
+* **Clase 0 (Postura Recta):** 716 imágenes totales en el dataset.
+* **Clase 1 (Postura Encorvada):** 773 imágenes totales en el dataset.
+* **Sujetos y Condiciones:** Múltiples sujetos en distintas posiciones corporales y bajo diversas condiciones de iluminación y fondos para mejorar la generalización del modelo.
 
+### División de los Datos
+La división del dataset se realizó de forma estructurada siguiendo la proporción clásica 70/15/15:
 
-## Dataset Analytics
-Tabla resumen con la cantidad de imágenes recolectadas por clase, balance del conjunto, variedad de sujetos y condiciones de luz aplicadas.
+* **Entrenamiento (70%):** 1,042 imágenes (501 de Clase 0, 541 de Clase 1)
+* **Validación (15%):** 223 imágenes (107 de Clase 0, 116 de Clase 1)
+* **Prueba (15%):** 224 imágenes (108 de Clase 0, 116 de Clase 1)
+* **Total:** 1,489 imágenes
 
-Declaración numérica de la división de datos: Entrenamiento (70%), Validación (15%) y Prueba (15%).
+---
 
-224  test.
-1042 entrenamineto.
-223 validaciones.
-
-### Data Collection and Variety
-
-### Data Splitting
-
-## Neural Network Architecture
-
-Detailed description of the Multilayer Perceptron (MLP) designed from scratch for binary classification.The network processes flattened grayscale image vectors to output a single probability.
-
-### MLP Layers and Parameters
-
-The network consists of an input layer, a single hidden dense layer, and a dense output layer. Below is the structural specification and the exact dimension of each layer:
-
-Input Layer ($L_0$):** 4,096 nodes, representing the flattened $64 \times 64$ pixels of the preprocessed image.
-
-* **Hidden Layer ($L_1$):** Dense layer with [REPLACE: Number of hidden neurons, e.g., 64 or 128] neurons, utilizing the Rectified Linear Unit (ReLU) activation function.
-* **Output Layer ($L_2$):** A single neuron with a Sigmoid activation function to map the binary probability ($0$ or $1$).
-
-#### Layer Properties and Learnable Parameters
-
-| Layer | Type | Input Size | Output Size | Activation Function | Weights Matrix | Bias Vector | Total Parameters |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Hidden ($L_1$)** | Dense | 4,096 | $W_1$ | ReLU | $4096 \times W_1$ | $W_1 \times 1$ | $(4096 \times W_1) + W_1$ |
-| **Output ($L_2$)** | Dense | $W_1$ | 1 | Sigmoid | $W_1 \times 1$ | $1 \times 1$ | $W_1 + 1$ |
-| **Total** | | | | | | | **[REPLACE: Sum of parameters]** |
-
-> *Note: Replace $W_1$ with the hidden size you experimented with (e.g., 64 or 128).*
-
-#### Mathematical Parameter Calculations (Formula)
-To verify the intellectual and mathematical rigor of the network, parameters are calculated using the formula: $\text{Parameters} = (\text{inputs} \times \text{outputs}) + \text{biases}$.
-
-* **Hidden Layer ($L_1$):** $(4,096 \times W_1) + W_1$
-* **Output Layer ($L_2$):** $(W_1 \times 1) + 1$
-
-## Stage 1 Performance: OpenMP
-
-Tabla de tiempos medidos: Tiempo serial de un hilo frente a tiempos con 2, 4, 8... hilos en OpenMP.
-
-Gráfica de aceleración (Speedup vs. Número de hilos).
-
-Respuestas técnicas a las preguntas de reflexión de OpenMP (Limitaciones por Ley de Amdahl y cuello de botella de E/S de disco).
-
-### Execution Times Table
-### Speedup Chart & Analysis
-### Stage 1 Reflection Question
+## Arquitectura de la Red Neuronal
 
 
+### Capas y Parámetros del MLP
 
-## Stage 2 Performance: CUDA
+La red consiste en una capa de entrada, una única capa densa oculta y una capa densa de salida. A continuación se presenta la especificación estructural y la dimensión exacta de cada capa:
 
-### CPU vs GPU training times
+**Capa de Entrada ($L_0$):** 4,096 nodos, que representan los píxeles aplanados de la imagen preprocesada de $64 \times 64$.
+
+* **Capa Oculta ($L_1$):** Capa densa con 128 neuronas, utilizando la función de activación Rectified Linear Unit (ReLU).
+* **Capa de Salida ($L_2$):** Una sola neurona con función de activación Sigmoid para mapear la probabilidad binaria ($0$ o $1$).
+
+#### Propiedades de las Capas y Parámetros Entrenables
+
+| Capa               | Tipo  | Tamaño de Entrada | Tamaño de Salida | Función de Activación |  Matriz de Pesos  |   Vector Bias  |          Parámetros Totales          |
+| :----------------- | :---- | :---------------: | :--------------: | :-------------------: | :---------------: | :------------: | :----------------------------------: |
+| **Oculta ($L_1$)** | Densa |       4,096       |        128       |          ReLU         | $4096 \times 128$ | $128 \times 1$ |    $(4096 \times 128) + 128 = 524,416$   |
+| **Salida ($L_2$)** | Densa |        128        |         1        |        Sigmoid        |   $128 \times 1$  |  $1 \times 1$  |               $128 + 1 = 129$        |
+| **Total**          |       |                   |                  |                       |                   |                | **524,545**                          |
+
+> *Nota: Se utilizó un tamaño de capa oculta ($W_1$) de 128 neuronas.*
+
+#### Cálculo Matemático de los Parámetros (Fórmula)
+
+Para verificar el rigor intelectual y matemático de la red, los parámetros se calculan usando la fórmula: $\text{Parámetros} = (\text{entradas} \times \text{salidas}) + \text{biases}$.
+
+* **Capa Oculta ($L_1$):** $(4,096 \times 128) + 128 = 524,416$
+* **Capa de Salida ($L_2$):** $(128 \times 1) + 1 = 129$
+
+---
+
+## Rendimiento Etapa 1: OpenMP
+
+### Tabla de Tiempos de Ejecución
+
+A continuación se presentan los tiempos medidos al ejecutar el preprocesamiento sobre el conjunto completo de **entrenamiento (1,042 imágenes)** con diferentes números de hilos en OpenMP:
+
+| Hilos | Tiempo (segundos) | Speedup Real | Eficiencia |
+| :---: | :---------------: | :----------: | :--------: |
+|   1   |      39.9010      |     1.00     |    1.00    |
+|   2   |      21.0810      |     1.89     |    0.95    |
+|   4   |      11.5700      |     3.45     |    0.86    |
+|   8   |       6.6220      |     6.03     |    0.75    |
+|  12   |       5.6080      |     7.12     |    0.59    |
+
+![Tabla de Tiempos](../images_report/tabla_tiempos_ejecucion.png)
+
+### Gráfica y Análisis de Speedup
+
+Comparativa del comportamiento del escalado temporal y de la aceleración obtenida frente al comportamiento ideal lineal:
+
+![Speedup de OpenMP](../images_report/openmp_speedup.png)
+
+* **Análisis:** Se observa un escalado sumamente favorable hasta los 8 hilos (con una eficiencia superior al 75%). Al subir a 12 hilos, la ganancia de velocidad empieza a estabilizarse (Speedup de 7.12×), debido al cuello de botella de la lectura secuencial de disco (E/S) y al límite de núcleos físicos reales del procesador (6 núcleos reales, 12 lógicos).
+
+### Preguntas de Reflexión de OpenMP
+
+1. **¿Por qué este preprocesamiento es “vergonzosamente paralelo”? Den una analogía.**
+   * **Respuesta:** Se considera vergonzosamente paralelo porque el preprocesamiento de cada imagen (conversión a escala de grises, redimensionamiento, aplicación del filtro Sobel) se realiza de forma completamente independiente. El resultado de procesar una imagen no depende ni afecta al procesamiento de ninguna otra.
+   * **Analogía:** Imagina a un grupo de 10 profesores calificando exámenes independientes. Cada profesor puede calificar su propia pila de exámenes sin necesidad de comunicarse o sincronizarse con los otros profesores. El trabajo total simplemente se divide entre la cantidad de profesores disponibles.
+
+2. **Si tienen 8 hilos pero el speedup se queda en 5×, ¿qué lo limita? (pista: Ley de Amdahl).**
+   * **Respuesta:** La Ley de Amdahl establece que la aceleración está acotada por la fracción del código que es puramente secuencial (no paralelizable). En este pipeline, esa fracción secuencial corresponde mayoritariamente a las operaciones de Entrada y Salida (E/S) a disco: abrir, decodificar las imágenes mediante `stb_image` y, al final, la consolidación/guardado de los archivos `.bin` resultantes. Dado que la lectura y escritura física en disco es inherentemente secuencial a nivel del sistema operativo, este cuello de botella evita que la ganancia de rendimiento crezca linealmente con el número de núcleos.
+
+3. **Diagrama del flujo de una imagen desde foto cruda hasta vector de 4,096:**
+   * **Respuesta:** A continuación se ilustra el flujo conceptual de preprocesamiento de una imagen:
+   
+   ![Diagrama del flujo de imagen](../images_report/diagram.png)
+
+## Rendimiento Etapa 2: CUDA
+
+### Tiempos de Entrenamiento CPU vs GPU
+
 ![CPU vs GPU](../images_report/cpu_vs_gpu.png)
 
-### Block Size Impact Analysis
+### Análisis del Impacto del Tamaño de Bloque
+
 ![Tiempo vs tamaño de bloque](../images_report/tiempo_vs_bloque.png)
 
-### GPU Monitoring
+### Monitoreo de GPU
+
 ![Monitoreo GPU](../images_report/nvidia_smi.png)
 
+### Preguntas de Reflexión de CUDA
+1. ¿Por qué la multiplicación de matrices es ideal para la GPU? ¿Cuántos hilos lanzan y qué calcula cada uno?
+2. Una capa densa es un matmul. Entonces, ¿qué estaba haciendo PyTorch por dentro en el corte anterior?
+3. ¿En qué punto el speedup CPU→GPU se nota más: con pocos datos o con muchos? ¿Por qué?
 
 
-### Stage 2 Reflection Questions
+## Métricas de Evaluación del Modelo - Etapa 3
 
-## Stage 3 Model Evaluation Metrics
+### Curvas de Pérdida y Exactitud del Entrenamiento
 
-### Training Loss and Accuracy Curves
-![Curva de loss y accuracy](../images_report/curva_perdida.png)
-![Curva de loss y accuracy](../images_report/curva_exactitud.png)
+![Curva de pérdida y exactitud](../images_report/curva_perdida.png)
+![Curva de pérdida y exactitud](../images_report/curva_exactitud.png)
 
-### Confusion Matrix
+### Matriz de Confusión
+
 ![Matriz de confusión](../images_report/matriz_confusion.png)
-### Precision, Recall, and F1-Score
-![precision,recall,f1](../images_report/metrica.png)
 
-## Conclusions
+### Precisión, Recall y Puntaje F1
 
-## References
+![precision, recall, f1](../images_report/metrica.png)
+
+## Conclusiones
+
+## Referencias
+
 Enlaces a la documentación oficial consultada (NVIDIA CUDA C Programming Guide, especificaciones de OpenMP y librerías utilizadas).
