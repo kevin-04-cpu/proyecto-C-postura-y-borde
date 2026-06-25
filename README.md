@@ -94,10 +94,6 @@ Antes de configurar y ejecutar este proyecto, asegúrate de que tu sistema cumpl
 * **CUDA Toolkit**: NVIDIA CUDA Toolkit (v11.0 o superior) que coincida con la capacidad del controlador de tu GPU.
 * **Entorno de Python**: Python 3.8 o superior.
 
-The script is `scripts/organizar_dataset.py`.
-
-Here is the corrected **Instalación y configuración** section:
-
 ### Instalación y configuración
 
 1. **Clonar el repositorio**
