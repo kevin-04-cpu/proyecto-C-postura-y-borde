@@ -157,12 +157,23 @@ Comparativa del comportamiento del escalado temporal y de la aceleración obteni
 ![Monitoreo GPU](../images_report/nvidia_smi.png)
 
 ### Preguntas de Reflexión de CUDA
-1. ¿Por qué la multiplicación de matrices es ideal para la GPU? ¿Cuántos hilos lanzan y qué calcula cada uno?
-2. Una capa densa es un matmul. Entonces, ¿qué estaba haciendo PyTorch por dentro en el corte anterior?
-3. ¿En qué punto el speedup CPU→GPU se nota más: con pocos datos o con muchos? ¿Por qué?
+
+1. **¿Por qué la multiplicación de matrices es ideal para la GPU? ¿Cuántos hilos lanzan y qué calcula cada uno?**
+   - **Idealidad para GPU:** La multiplicación de matrices ($C = A \times B$) es un problema masivamente paralelo con un alto grado de independencia de datos (paralelismo a nivel de datos). Cada elemento $C[i][j]$ de la matriz resultante se calcula de forma independiente realizando el producto punto de la fila $i$ de $A$ y la columna $j$ de $B$. Las GPUs, diseñadas bajo la arquitectura SIMT (Single Instruction, Multiple Threads), poseen miles de núcleos capaces de ejecutar la misma instrucción aritmética en paralelo sobre diferentes elementos de datos. Esto es ideal para ocultar la latencia de memoria con computación activa.
+   - **Cantidad de hilos y cálculo:** Se suele lanzar una cuadrícula bidimensional de hilos (Grid of Blocks) donde el número total de hilos es igual (o superior, manejando límites) al número de elementos en la matriz resultante ($M \times N$, donde $M$ es el número de filas de $A$ y $N$ es el número de columnas de $B$). Cada hilo individual se identifica mediante sus coordenadas globales en la malla (`blockIdx` y `threadIdx`) y se encarga de calcular exactamente **un único elemento** de la matriz de salida $C[fil][col]$ realizando el bucle de acumulación (producto punto) correspondiente.
+
+2. **Una capa densa es un matmul. Entonces, ¿qué estaba haciendo PyTorch por dentro en el corte anterior?**
+   - PyTorch por debajo utiliza librerías optimizadas de álgebra lineal como **cuBLAS** (para ejecuciones en GPU de NVIDIA) o **ATen** (su librería interna de tensores).
+   - En una capa densa (fully connected / lineal), realiza la operación del *Forward Pass*: $Y = X \cdot W^T + b$. PyTorch gestiona de forma transparente la asignación de memoria en la VRAM de la GPU, la transferencia de los tensores de entrada, la invocación de kernels altamente optimizados de multiplicación de matrices (que usan técnicas avanzadas como memoria compartida/shared memory y registros del chip para minimizar accesos a memoria global), y la adición del vector de sesgo (bias) de forma paralela.
+
+3. **¿En qué punto el speedup CPU→GPU se nota más: con pocos datos o con muchos? ¿Por qué?**
+   - El *speedup* se nota significativamente más **con muchos datos** (matrices grandes o lotes de datos masivos).
+   - **Con pocos datos:** El costo de inicializar el contexto de CUDA, compilar o cargar kernels y, sobre todo, transferir los datos a través del bus PCIe (de la RAM del host de la CPU a la VRAM del dispositivo de la GPU) supera por mucho el tiempo de cómputo en sí. La CPU puede resolverlo más rápido debido a su mayor velocidad de reloj y menores latencias de acceso directo a caché.
+   - **Con muchos datos:** La transferencia PCIe se amortiza porque el tiempo de cómputo en paralelo en la GPU (que escala de manera mucho más eficiente gracias a sus miles de cores) domina sobre la transferencia física. La GPU alcanza su máxima ocupación y paralelismo, dejando en clara desventaja el procesamiento secuencial o vectorizado limitado de la CPU.
 
 
-## Métricas de Evaluación del Modelo - Etapa 3
+
+## Métricas de Evaluación del Modelo
 
 ### Curvas de Pérdida y Exactitud del Entrenamiento
 
@@ -177,6 +188,22 @@ Comparativa del comportamiento del escalado temporal y de la aceleración obteni
 
 ![precision, recall, f1](../images_report/metrica.png)
 
+## Streamlit - Etapa 3
+
+En esta sección se muestra el funcionamiento de la interfaz de usuario en Streamlit utilizando los pesos entrenados en CUDA para clasificar la postura.
+
+### Predicción Correcta
+En este caso, el clasificador detecta adecuadamente el estado de la postura:
+
+![Predicción Correcta](../images_report/prediccion_correcta.png)
+
+### Predicción Incorrecta (Fallo)
+Aquí se muestra un caso de error en la inferencia:
+
+![Predicción Incorrecta](../images_report/prediccion_incorrecta.png)
+
+* **¿Por qué falló?**
+El dataset con e que fue entrenado la res neuronal carece de imagenes de personas con cuerpo completo, mayormente tiene imagenes de la cintura hacia arriba, por lo tanto, la red neuronal no puede identificar correctamente la postura del cuerpo.
 ## Conclusiones
 
 ## Referencias
