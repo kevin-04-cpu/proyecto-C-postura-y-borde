@@ -203,4 +203,4 @@ Una aplicación de despliegue ligera que carga los binarios crudos para ejecutar
 
 ## Informe de rendimiento y benchmarks
 
-Para un análisis detallado de los tiempos de ejecución, especificaciones de hardware, gráficos de aceleramiento (speedup) y preguntas de reflexión académica, consulta el [Informe de rendimiento y benchmarks](https://www.google.com/search?q=./docs/BENCHMARK_REPORT.md).
+Para un análisis detallado de los tiempos de ejecución, especificaciones de hardware, gráficos de aceleramiento (speedup) y preguntas de reflexión académica, consulta el [Informe de rendimiento y benchmarks](docs/BENCHMARK_REPORT.md).
