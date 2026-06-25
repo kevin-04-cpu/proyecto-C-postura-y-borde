@@ -89,27 +89,36 @@ def apply_sobel_python(img_gray):
     return magnitude
 
 def hay_persona(img_color):
-    """Detecta si hay una persona en la imagen, de frente o de perfil.
-    Devuelve True si encuentra al menos un rostro, False si no."""
-    # Cargar los clasificadores incluidos en OpenCV
-    frontal_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    profile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml")
-
-    # Escala de grises + ecualización de histograma (mejora el contraste para detectar)
+    """Detecta si hay una persona visible en la imagen usando múltiples
+    clasificadores Haar Cascade de OpenCV con parámetros calibrados:
+    - Frontales con minNeighbors=4 (evita fantasmas en muebles/paredes)
+    - Profile y upperbody con minNeighbors=3 (más sensibles para ángulos difíciles)
+    - Ecualización solo como último recurso con upperbody"""
+    
     gray = cv2.cvtColor(img_color, cv2.COLOR_BGR2GRAY)
-    gray = cv2.equalizeHist(gray)
-
-    # Parámetros más sensibles para reconocer caras inclinadas o parcialmente tapadas
-    sf, mn, ms = 1.05, 2, (30, 30)
-
-    # 1. Rostros de frente
-    if len(frontal_cascade.detectMultiScale(gray, scaleFactor=sf, minNeighbors=mn, minSize=ms)) > 0: return True
-    # 2. Rostros de perfil (un lado)
-    if len(profile_cascade.detectMultiScale(gray, scaleFactor=sf, minNeighbors=mn, minSize=ms)) > 0: return True
-    # 3. Perfil del otro lado (imagen volteada)
-    gray_volteado = cv2.flip(gray, 1)
-    if len(profile_cascade.detectMultiScale(gray_volteado, scaleFactor=sf, minNeighbors=mn, minSize=ms)) > 0: return True
-
+    
+    frontal = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    alt2    = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml")
+    profile = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml")
+    upper   = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_upperbody.xml")
+    
+    params_strict = dict(scaleFactor=1.05, minNeighbors=4, minSize=(40, 40))
+    params_soft   = dict(scaleFactor=1.05, minNeighbors=3, minSize=(40, 40))
+    
+    # Nivel 1: Imagen original sin ecualizar
+    if len(frontal.detectMultiScale(gray, **params_strict)) > 0: return True
+    if len(alt2.detectMultiScale(gray, **params_strict)) > 0:    return True
+    if len(profile.detectMultiScale(gray, **params_soft)) > 0:   return True
+    if len(upper.detectMultiScale(gray, **params_soft)) > 0:     return True
+    
+    # Nivel 2: Imagen volteada para perfiles del otro lado
+    gray_flip = cv2.flip(gray, 1)
+    if len(profile.detectMultiScale(gray_flip, **params_soft)) > 0: return True
+    
+    # Nivel 3: Ecualización solo con upperbody (último recurso)
+    gray_eq = cv2.equalizeHist(gray)
+    if len(upper.detectMultiScale(gray_eq, **params_soft)) > 0: return True
+    
     return False
 
 def preprocess_image(image_bytes):
