@@ -18,6 +18,4 @@ Thumbs.db
 resultados/
 
 #ignorar calculo de metricas
-*.ps1
-plot_metrics.py
 
