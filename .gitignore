@@ -18,4 +18,5 @@ Thumbs.db
 resultados/
 
 #ignorar calculo de metricas
+!requirements.txt
 
